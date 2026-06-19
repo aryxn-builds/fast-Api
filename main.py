@@ -9,4 +9,4 @@ def read_root():
 
 @app.get("/about")
 def about():
-    return {"About": "This is a FastAPI application."}
+    return {"About": "This is a FastAPI application."} 

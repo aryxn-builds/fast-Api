@@ -48,5 +48,15 @@
         "weight": 75,
         "bmi": 31.22,
         "verdict": "Obese"
+    },
+    "P006": {
+        "name": "ravi",
+        "city": "delhi",
+        "age": 19,
+        "gender": "male",
+        "height": 1.4,
+        "weight": 80.0,
+        "bmi": 40.82,
+        "verdict": "Obese"
     }
 }

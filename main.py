@@ -1,12 +1,52 @@
-from fastapi import FastAPI , Path , HTTPException , Query
+from fastapi import FastAPI, Path, HTTPException, Query
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field, computed_field
+from typing import Annotated, Literal, Optional
 import json
 
+
 app = FastAPI()
+
+class Patient(BaseModel):
+
+    id: Annotated[str, Field(..., description='ID of the patient', examples=['P001'])]
+    name: Annotated[str, Field(..., description='Name of the patient')]
+    city: Annotated[str, Field(..., description='City where the patient is living')]
+    age: Annotated[int, Field(..., gt=0, lt=120, description='Age of the patient')]
+    gender: Annotated[Literal['male', 'female', 'others'], Field(..., description='Gender of the patient')]
+    height: Annotated[float, Field(..., gt=0, description='Height of the patient in mtrs')]
+    weight: Annotated[float, Field(..., gt=0, description='Weight of the patient in kgs')]
+
+    @computed_field
+    @property
+    def bmi(self) -> float:
+        bmi = round(self.weight/(self.height**2),2)
+        return bmi
+    
+    @computed_field
+    @property
+    def verdict(self) -> str:
+
+        if self.bmi < 18.5:
+            return 'Underweight'
+        elif self.bmi < 25:
+            return 'Normal'
+        elif self.bmi < 30:
+            return 'Normal'
+        else:
+            return 'Obese'
+        
+
 
 def load_config():
     with open("patients.json") as config_file:
         config = json.load(config_file)
     return config
+
+
+def save_data(data):
+    with open('patients.json', 'w') as f:
+        json.dump(data, f)
 
 @app.get("/")
 def read_root():
@@ -23,12 +63,11 @@ def view_patients():
     return data
 
 
-
 #  adding a new endpoint to view a specific patient by ID called path parameter. The endpoint will be /patients/{patient_id} and will return the details of the patient if found, or a 404 error if not found.
 
 
 @app.get("/patients/{patient_id}")
-def view_patient(patient_id: str = Path(..., description="ID of the patient in the DB", example="P001")):
+def view_patient(patient_id: str = Path(..., description="ID of the patient in the DB", examples=["P001"])):
     # load all data of the patients
     data = load_config()
     # check if the patient id exists in the data
@@ -58,4 +97,25 @@ def sort_patients(sort_by : str = Query(..., description="Sort on the basis of h
   
   sorted_patients = sorted(data.values(), key=lambda x: x[sort_by], reverse=sort_reverse)
   return sorted_patients
+
+
+
+# adding a new endpoint to add a new patient to the database. The endpoint will be /patients and will accept a POST request with the patient details in the request body. The endpoint will validate the input data and return a success message if the patient is added successfully, or an error message if there is any validation error.
+@app.post("/create")
+def create_patient(patient: Patient):
     
+    # load all data of the patients
+    data = load_config()
+    
+     # check if the patient already exists
+    if patient.id in data:
+        raise HTTPException(status_code=400, detail="Patient with this ID already exists")
+    
+    
+    # new patient add to the database
+    data[patient.id] = patient.model_dump(exclude=['id'])
+    
+    # save into the json file
+    save_data(data)
+    
+    return JSONResponse(status_code=201, content={'message':'patient created successfully'})
